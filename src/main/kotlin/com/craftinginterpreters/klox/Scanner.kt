@@ -1,11 +1,44 @@
 package com.craftinginterpreters.klox
 
-import com.craftinginterpreters.klox.TokenType.*
-import jdk.nashorn.internal.objects.NativeRegExp.source
-import java.awt.SystemColor.text
-
-
-
+import com.craftinginterpreters.klox.TokenType.AND
+import com.craftinginterpreters.klox.TokenType.BANG
+import com.craftinginterpreters.klox.TokenType.BANG_EQUAL
+import com.craftinginterpreters.klox.TokenType.CLASS
+import com.craftinginterpreters.klox.TokenType.COMMA
+import com.craftinginterpreters.klox.TokenType.DOT
+import com.craftinginterpreters.klox.TokenType.ELSE
+import com.craftinginterpreters.klox.TokenType.EOF
+import com.craftinginterpreters.klox.TokenType.EQUAL
+import com.craftinginterpreters.klox.TokenType.EQUAL_EQUAL
+import com.craftinginterpreters.klox.TokenType.FALSE
+import com.craftinginterpreters.klox.TokenType.FOR
+import com.craftinginterpreters.klox.TokenType.FUN
+import com.craftinginterpreters.klox.TokenType.GREATER
+import com.craftinginterpreters.klox.TokenType.GREATER_EQUAL
+import com.craftinginterpreters.klox.TokenType.IDENTIFIER
+import com.craftinginterpreters.klox.TokenType.IF
+import com.craftinginterpreters.klox.TokenType.LEFT_BRACE
+import com.craftinginterpreters.klox.TokenType.LEFT_PAREN
+import com.craftinginterpreters.klox.TokenType.LESS
+import com.craftinginterpreters.klox.TokenType.LESS_EQUAL
+import com.craftinginterpreters.klox.TokenType.MINUS
+import com.craftinginterpreters.klox.TokenType.NIL
+import com.craftinginterpreters.klox.TokenType.NUMBER
+import com.craftinginterpreters.klox.TokenType.OR
+import com.craftinginterpreters.klox.TokenType.PLUS
+import com.craftinginterpreters.klox.TokenType.PRINT
+import com.craftinginterpreters.klox.TokenType.RETURN
+import com.craftinginterpreters.klox.TokenType.RIGHT_BRACE
+import com.craftinginterpreters.klox.TokenType.RIGHT_PAREN
+import com.craftinginterpreters.klox.TokenType.SEMICOLON
+import com.craftinginterpreters.klox.TokenType.SLASH
+import com.craftinginterpreters.klox.TokenType.STAR
+import com.craftinginterpreters.klox.TokenType.STRING
+import com.craftinginterpreters.klox.TokenType.SUPER
+import com.craftinginterpreters.klox.TokenType.THIS
+import com.craftinginterpreters.klox.TokenType.TRUE
+import com.craftinginterpreters.klox.TokenType.VAR
+import com.craftinginterpreters.klox.TokenType.WHILE
 
 
 private val keywords = mapOf(
@@ -143,8 +176,7 @@ class Scanner(private val source: String) {
     while (isAlphaNumeric(peek())) advance()
 
     val text = source.substring(start, current)
-    var type = keywords[text]
-    if (type == null) type = IDENTIFIER
+    val type = keywords[text] ?: IDENTIFIER
     addToken(type)
   }
 
