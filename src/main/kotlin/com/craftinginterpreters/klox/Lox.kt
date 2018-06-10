@@ -22,6 +22,13 @@ fun error(line: Int, message: String) {
   report(line, "", message)
 }
 
+fun error(token: Token, message: String) {
+  when {
+    token.type == TokenType.EOF -> report(token.line, " at end", message)
+    else -> report(token.line, " at '" + token.lexeme + "'", message)
+  }
+}
+
 @Throws(IOException::class)
 private fun runFile(path: String) {
   val bytes = Files.readAllBytes(Paths.get(path))
@@ -45,8 +52,12 @@ private fun runPrompt() {
 private fun run(source: String) {
   val scanner = Scanner(source)
   val tokens = scanner.scanTokens()
+  val parser = Parser(tokens)
+  val expression = parser.parse()
 
-  tokens.forEach { System.out.println(it) }
+  if (hadError) return
+
+  System.out.println(AstPrinter().print(expression))
 }
 
 private fun report(line: Int, where: String, message: String) {

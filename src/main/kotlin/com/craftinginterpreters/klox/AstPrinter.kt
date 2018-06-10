@@ -5,24 +5,9 @@ import com.craftinginterpreters.klox.Expr.Grouping
 import com.craftinginterpreters.klox.Expr.Literal
 import com.craftinginterpreters.klox.Expr.Unary
 
-fun main(args: Array<String>) {
-  val expr = Binary(
-      Unary(
-          Token(TokenType.MINUS, "-", null, 1),
-          Literal(123)
-      ),
-      Token(TokenType.STAR, "*", null, 1),
-      Grouping(
-          Literal(45.67)
-      )
-  )
-
-  System.out.println(AstPrinter().print(expr))
-}
-
 class AstPrinter: Expr.Visitor<String> {
 
-  fun print(expr: Expr) = expr.accept(this)
+  fun print(expr: Expr?) = expr?.accept(this)
 
   override fun visit(expr: Binary) = parenthesize(expr.operator.lexeme, expr.left, expr.right)
 
