@@ -7,7 +7,9 @@ import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Paths
 
+val interpreter = Interpreter()
 var hadError = false
+var hadRuntimeError = false
 
 @Throws(IOException::class)
 fun main(args: Array<String>) {
@@ -18,23 +20,13 @@ fun main(args: Array<String>) {
   }
 }
 
-fun error(line: Int, message: String) {
-  report(line, "", message)
-}
-
-fun error(token: Token, message: String) {
-  when {
-    token.type == TokenType.EOF -> report(token.line, " at end", message)
-    else -> report(token.line, " at '" + token.lexeme + "'", message)
-  }
-}
-
 @Throws(IOException::class)
 private fun runFile(path: String) {
   val bytes = Files.readAllBytes(Paths.get(path))
   run(String(bytes, Charset.defaultCharset()))
 
   if (hadError) System.exit(65)
+  if (hadRuntimeError) System.exit(70)
 }
 
 @Throws(IOException::class)
@@ -56,8 +48,25 @@ private fun run(source: String) {
   val expression = parser.parse()
 
   if (hadError) return
+  if (expression == null) return
 
-  System.out.println(AstPrinter().print(expression))
+  interpreter.interpret(expression)
+}
+
+fun error(line: Int, message: String) {
+  report(line, "", message)
+}
+
+fun error(token: Token, message: String) {
+  when {
+    token.type == TokenType.EOF -> report(token.line, " at end", message)
+    else -> report(token.line, " at '" + token.lexeme + "'", message)
+  }
+}
+
+fun runtimeError(error: RuntimeError) {
+  System.err.println(error.message + "\n[line " + error.token.line + "]")
+  hadRuntimeError = true
 }
 
 private fun report(line: Int, where: String, message: String) {

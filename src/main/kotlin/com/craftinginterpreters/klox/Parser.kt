@@ -1,6 +1,6 @@
 package com.craftinginterpreters.klox
 
-import com.craftinginterpreters.klox.Expr.Binary
+import com.craftinginterpreters.klox.Expr.*
 import com.craftinginterpreters.klox.TokenType.BANG
 import com.craftinginterpreters.klox.TokenType.BANG_EQUAL
 import com.craftinginterpreters.klox.TokenType.CLASS
@@ -60,7 +60,7 @@ class Parser(private val tokens: List<Token>) {
     while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
       val operator = previous()
       val right = addition()
-      expr = Expr.Binary(expr, operator, right)
+      expr = Binary(expr, operator, right)
     }
 
     return expr
@@ -72,7 +72,7 @@ class Parser(private val tokens: List<Token>) {
     while (match(MINUS, PLUS)) {
       val operator = previous()
       val right = multiplication()
-      expr = Expr.Binary(expr, operator, right)
+      expr = Binary(expr, operator, right)
     }
 
     return expr
@@ -84,7 +84,7 @@ class Parser(private val tokens: List<Token>) {
     while (match(TokenType.SLASH, TokenType.STAR)) {
       val operator = previous()
       val right = unary()
-      expr = Expr.Binary(expr, operator, right)
+      expr = Binary(expr, operator, right)
     }
 
     return expr
@@ -94,25 +94,25 @@ class Parser(private val tokens: List<Token>) {
     if (match(BANG, MINUS)) {
       val operator = previous()
       val right = unary()
-      return Expr.Unary(operator, right)
+      return Unary(operator, right)
     }
 
     return primary()
   }
 
   private fun primary(): Expr {
-    if (match(FALSE)) return Expr.Literal(false)
-    if (match(TRUE)) return Expr.Literal(true)
-    if (match(NIL)) return Expr.Literal(null)
+    if (match(FALSE)) return Literal(false)
+    if (match(TRUE)) return Literal(true)
+    if (match(NIL)) return Literal(null)
 
     if (match(NUMBER, STRING)) {
-      return Expr.Literal(previous().literal)
+      return Literal(previous().literal)
     }
 
     if (match(LEFT_PAREN)) {
       val expr = expression()
       consume(RIGHT_PAREN, "Expect ')' after expression.")
-      return Expr.Grouping(expr)
+      return Grouping(expr)
     }
 
     throw error(peek(), "Expect expression.")
