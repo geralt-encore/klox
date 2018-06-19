@@ -1,81 +1,77 @@
 package com.craftinginterpreters.klox
 
-import com.craftinginterpreters.klox.TokenType.BANG
-import com.craftinginterpreters.klox.TokenType.BANG_EQUAL
-import com.craftinginterpreters.klox.TokenType.EQUAL_EQUAL
-import com.craftinginterpreters.klox.TokenType.GREATER
-import com.craftinginterpreters.klox.TokenType.GREATER_EQUAL
-import com.craftinginterpreters.klox.TokenType.LESS_EQUAL
-import com.craftinginterpreters.klox.TokenType.MINUS
-import com.craftinginterpreters.klox.TokenType.PLUS
-import com.craftinginterpreters.klox.TokenType.SLASH
-import com.craftinginterpreters.klox.TokenType.STAR
 
-class Interpreter : Expr.Visitor<Any?> {
+class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
-  fun interpret(expression: Expr) {
+  private var environment = Environment()
+
+  fun interpret(statements: List<Stmt>) {
     try {
-      val value = evaluate(expression)
-      System.out.println(stringify(value))
+      statements.forEach { execute(it) }
     } catch (error: RuntimeError) {
       runtimeError(error)
     }
   }
 
-  override fun visit(expr: Expr.Binary): Any? {
+  private fun execute(statement: Stmt) {
+    statement.accept(this)
+  }
+
+  override fun visitBinaryExpr(expr: Expr.Binary): Any? {
     val left = evaluate(expr.left)
     val right = evaluate(expr.right)
 
     return when (expr.operator.type) {
-      GREATER -> {
+      TokenType.GREATER -> {
         checkNumberOperands(expr.operator, left, right)
         left as Double > right as Double
       }
-      GREATER_EQUAL -> {
+      TokenType.GREATER_EQUAL -> {
         checkNumberOperands(expr.operator, left, right)
         left as Double >= right as Double
       }
-//      LESS -> {
+//      TokenType.LESS -> {
 //        checkNumberOperands(expr.operator, left, right)
 //        left as Double < right as Double
 //      }
-      LESS_EQUAL -> {
+      TokenType.LESS_EQUAL -> {
         checkNumberOperands(expr.operator, left, right)
         left as Double <= right as Double
       }
-      MINUS -> {
+      TokenType.MINUS -> {
         checkNumberOperands(expr.operator, left, right)
         left as Double - right as Double
       }
-      PLUS -> when {
+      TokenType.PLUS -> when {
         left is Double && right is Double -> left + right
         left is String && right is String -> left + right
         else -> throw RuntimeError(expr.operator, "Operands must be two numbers or two strings.")
       }
-      SLASH -> {
+      TokenType.SLASH -> {
         checkNumberOperands(expr.operator, left, right)
         left as Double / right as Double
       }
-      STAR -> {
+      TokenType.STAR -> {
         checkNumberOperands(expr.operator, left, right)
         left as Double * right as Double
       }
-      BANG_EQUAL -> !isEqual(left, right)
-      EQUAL_EQUAL -> isEqual(left, right)
+      TokenType.BANG_EQUAL -> !isEqual(left, right)
+      TokenType.EQUAL_EQUAL -> isEqual(left, right)
       else -> null
     }
   }
 
-  override fun visit(expr: Expr.Grouping) = evaluate(expr.expression)
+  override fun visitGroupingExpr(expr: Expr.Grouping) = evaluate(expr.expression)
 
-  override fun visit(expr: Expr.Literal) = expr.value
+  override fun visitLiteralExpr(expr: Expr.Literal) = expr.value
 
-  override fun visit(expr: Expr.Unary): Any? {
+  override fun visitUnaryExpr(expr: Expr.Unary): Any? {
     val right = evaluate(expr.right)
 
+    @Suppress("NON_EXHAUSTIVE_WHEN")
     when (expr.operator.type) {
-      BANG -> !isTruthy(right)
-      MINUS -> {
+      TokenType.BANG -> !isTruthy(right)
+      TokenType.MINUS -> {
         checkNumberOperand(expr.operator, right)
         -(right as Double)
       }
@@ -84,7 +80,48 @@ class Interpreter : Expr.Visitor<Any?> {
     return null
   }
 
+  override fun visitVariableExpr(expr: Expr.Variable) = environment.get(expr.name)
+
+  override fun visitAssignExpr(expr: Expr.Assign): Any? {
+    val value = evaluate(expr.value)
+
+    environment.assign(expr.name, value)
+    return value
+  }
+
+  override fun visitExpressionStmt(stmt: Stmt.Expression) {
+    evaluate(stmt.expression)
+  }
+
+  override fun visitPrintStmt(stmt: Stmt.Print) {
+    val value = evaluate(stmt.expression)
+    println(stringify(value))
+  }
+
+  override fun visitVarStmt(stmt: Stmt.Var) {
+    var value: Any? = null
+    if (stmt.initializer != null) {
+      value = evaluate(stmt.initializer)
+    }
+
+    environment.define(stmt.name.lexeme, value)
+  }
+
+  override fun visitBlockStmt(stmt: Stmt.Block) {
+    executeBlock(stmt.statements, Environment(environment))
+  }
+
   private fun evaluate(expr: Expr) = expr.accept(this)
+
+  private fun executeBlock(statements: List<Stmt>, environment: Environment) {
+    val previous = this.environment
+    try {
+      this.environment = environment
+      statements.forEach { execute(it) }
+    } finally {
+      this.environment = previous
+    }
+  }
 
   private fun isTruthy(it: Any?) = when (it) {
     null -> false

@@ -1,54 +1,99 @@
 package com.craftinginterpreters.klox
 
-import com.craftinginterpreters.klox.Expr.*
-import com.craftinginterpreters.klox.TokenType.BANG
-import com.craftinginterpreters.klox.TokenType.BANG_EQUAL
-import com.craftinginterpreters.klox.TokenType.CLASS
-import com.craftinginterpreters.klox.TokenType.EOF
-import com.craftinginterpreters.klox.TokenType.EQUAL_EQUAL
-import com.craftinginterpreters.klox.TokenType.FALSE
-import com.craftinginterpreters.klox.TokenType.FOR
-import com.craftinginterpreters.klox.TokenType.FUN
-import com.craftinginterpreters.klox.TokenType.GREATER
-import com.craftinginterpreters.klox.TokenType.GREATER_EQUAL
-import com.craftinginterpreters.klox.TokenType.IF
-import com.craftinginterpreters.klox.TokenType.LEFT_PAREN
-import com.craftinginterpreters.klox.TokenType.LESS
-import com.craftinginterpreters.klox.TokenType.LESS_EQUAL
-import com.craftinginterpreters.klox.TokenType.MINUS
-import com.craftinginterpreters.klox.TokenType.NIL
-import com.craftinginterpreters.klox.TokenType.NUMBER
-import com.craftinginterpreters.klox.TokenType.PLUS
-import com.craftinginterpreters.klox.TokenType.PRINT
-import com.craftinginterpreters.klox.TokenType.RETURN
-import com.craftinginterpreters.klox.TokenType.RIGHT_PAREN
-import com.craftinginterpreters.klox.TokenType.SEMICOLON
-import com.craftinginterpreters.klox.TokenType.STRING
-import com.craftinginterpreters.klox.TokenType.TRUE
-import com.craftinginterpreters.klox.TokenType.VAR
-import com.craftinginterpreters.klox.TokenType.WHILE
 import com.craftinginterpreters.klox.error as loxError
+import java.util.ArrayList
+
+
 
 
 class Parser(private val tokens: List<Token>) {
 
   private var current = 0
 
-  fun parse() = try {
-    expression()
+  fun parse(): List<Stmt> {
+    val statements = mutableListOf<Stmt?>()
+    while (!isAtEnd()) {
+      statements += declaration()
+    }
+
+    return statements.filterNotNull()
+  }
+
+  private fun declaration() = try {
+    if (match(TokenType.VAR)) varDeclaration() else statement()
   } catch (error: ParseError) {
+    synchronize()
     null
   }
 
-  private fun expression() = equality()
+  private fun varDeclaration(): Stmt {
+    val name = consume(TokenType.IDENTIFIER, "Expect variable name.")
+
+    var initializer: Expr? = null
+    if (match(TokenType.EQUAL)) {
+      initializer = expression()
+    }
+
+    consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+    return Stmt.Var(name, initializer)
+  }
+
+  private fun statement() = when {
+    match(TokenType.PRINT) -> printStatement()
+    match(TokenType.LEFT_BRACE) -> Stmt.Block(block())
+    else -> expressionStatement()
+  }
+
+  private fun printStatement(): Stmt {
+    val value = expression()
+    consume(TokenType.SEMICOLON, "Expect ';' after value.")
+    return Stmt.Print(value)
+  }
+
+  private fun block(): List<Stmt> {
+    val statements = mutableListOf<Stmt?>()
+
+    while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+      statements.add(declaration())
+    }
+
+    consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+    return statements.filterNotNull()
+  }
+
+  private fun expressionStatement(): Stmt {
+    val expr = expression()
+    consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+    return Stmt.Expression(expr)
+  }
+
+  private fun expression() = assignment()
+
+  private fun assignment(): Expr {
+    val expr = equality()
+
+    if (match(TokenType.EQUAL)) {
+      val equals = previous()
+      val value = assignment()
+
+      if (expr is Expr.Variable) {
+        val name = expr.name
+        return Expr.Assign(name, value)
+      }
+
+      error(equals, "Invalid assignment target.")
+    }
+
+    return expr
+  }
 
   private fun equality(): Expr {
     var expr = comparison()
 
-    while (match(BANG_EQUAL, EQUAL_EQUAL)) {
+    while (match(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)) {
       val operator = previous()
       val right = comparison()
-      expr = Binary(expr, operator, right)
+      expr = Expr.Binary(expr, operator, right)
     }
 
     return expr
@@ -57,10 +102,10 @@ class Parser(private val tokens: List<Token>) {
   private fun comparison(): Expr {
     var expr = addition()
 
-    while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
+    while (match(TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL)) {
       val operator = previous()
       val right = addition()
-      expr = Binary(expr, operator, right)
+      expr = Expr.Binary(expr, operator, right)
     }
 
     return expr
@@ -69,10 +114,10 @@ class Parser(private val tokens: List<Token>) {
   private fun addition(): Expr {
     var expr = multiplication()
 
-    while (match(MINUS, PLUS)) {
+    while (match(TokenType.MINUS, TokenType.PLUS)) {
       val operator = previous()
       val right = multiplication()
-      expr = Binary(expr, operator, right)
+      expr = Expr.Binary(expr, operator, right)
     }
 
     return expr
@@ -84,35 +129,39 @@ class Parser(private val tokens: List<Token>) {
     while (match(TokenType.SLASH, TokenType.STAR)) {
       val operator = previous()
       val right = unary()
-      expr = Binary(expr, operator, right)
+      expr = Expr.Binary(expr, operator, right)
     }
 
     return expr
   }
 
   private fun unary(): Expr {
-    if (match(BANG, MINUS)) {
+    if (match(TokenType.BANG, TokenType.MINUS)) {
       val operator = previous()
       val right = unary()
-      return Unary(operator, right)
+      return Expr.Unary(operator, right)
     }
 
     return primary()
   }
 
   private fun primary(): Expr {
-    if (match(FALSE)) return Literal(false)
-    if (match(TRUE)) return Literal(true)
-    if (match(NIL)) return Literal(null)
+    if (match(TokenType.FALSE)) return Expr.Literal(false)
+    if (match(TokenType.TRUE)) return Expr.Literal(true)
+    if (match(TokenType.NIL)) return Expr.Literal(null)
 
-    if (match(NUMBER, STRING)) {
-      return Literal(previous().literal)
+    if (match(TokenType.NUMBER, TokenType.STRING)) {
+      return Expr.Literal(previous().literal)
     }
 
-    if (match(LEFT_PAREN)) {
+    if (match(TokenType.IDENTIFIER)) {
+      return Expr.Variable(previous())
+    }
+
+    if (match(TokenType.LEFT_PAREN)) {
       val expr = expression()
-      consume(RIGHT_PAREN, "Expect ')' after expression.")
-      return Grouping(expr)
+      consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
+      return Expr.Grouping(expr)
     }
 
     throw error(peek(), "Expect expression.")
@@ -128,21 +177,6 @@ class Parser(private val tokens: List<Token>) {
     loxError(token, message)
 
     return ParseError()
-  }
-
-  private fun synchronize() {
-    advance()
-
-    while (!isAtEnd()) {
-      if (previous().type === SEMICOLON) return
-
-      @Suppress("NON_EXHAUSTIVE_WHEN")
-      when (peek().type) {
-        CLASS, FUN, VAR, FOR, IF, WHILE, PRINT, RETURN -> return
-      }
-
-      advance()
-    }
   }
 
   private fun match(vararg types: TokenType): Boolean {
@@ -170,9 +204,25 @@ class Parser(private val tokens: List<Token>) {
 
   private fun previous() = tokens[current - 1]
 
-  private fun isAtEnd() = peek().type === EOF
+  private fun isAtEnd() = peek().type === TokenType.EOF
 
   private fun peek() = tokens[current]
 
-  internal class ParseError : RuntimeException()
+  private fun synchronize() {
+    advance()
+
+    while (!isAtEnd()) {
+      if (previous().type === TokenType.SEMICOLON) return
+
+      @Suppress("NON_EXHAUSTIVE_WHEN")
+      when (peek().type) {
+        TokenType.CLASS, TokenType.FUN, TokenType.VAR, TokenType.FOR,
+        TokenType.IF, TokenType.WHILE, TokenType.PRINT, TokenType.RETURN -> return
+      }
+
+      advance()
+    }
+  }
+
+  class ParseError : RuntimeException()
 }

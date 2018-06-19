@@ -1,63 +1,22 @@
 package com.craftinginterpreters.klox
 
-import com.craftinginterpreters.klox.TokenType.AND
-import com.craftinginterpreters.klox.TokenType.BANG
-import com.craftinginterpreters.klox.TokenType.BANG_EQUAL
-import com.craftinginterpreters.klox.TokenType.CLASS
-import com.craftinginterpreters.klox.TokenType.COMMA
-import com.craftinginterpreters.klox.TokenType.DOT
-import com.craftinginterpreters.klox.TokenType.ELSE
-import com.craftinginterpreters.klox.TokenType.EOF
-import com.craftinginterpreters.klox.TokenType.EQUAL
-import com.craftinginterpreters.klox.TokenType.EQUAL_EQUAL
-import com.craftinginterpreters.klox.TokenType.FALSE
-import com.craftinginterpreters.klox.TokenType.FOR
-import com.craftinginterpreters.klox.TokenType.FUN
-import com.craftinginterpreters.klox.TokenType.GREATER
-import com.craftinginterpreters.klox.TokenType.GREATER_EQUAL
-import com.craftinginterpreters.klox.TokenType.IDENTIFIER
-import com.craftinginterpreters.klox.TokenType.IF
-import com.craftinginterpreters.klox.TokenType.LEFT_BRACE
-import com.craftinginterpreters.klox.TokenType.LEFT_PAREN
-import com.craftinginterpreters.klox.TokenType.LESS
-import com.craftinginterpreters.klox.TokenType.LESS_EQUAL
-import com.craftinginterpreters.klox.TokenType.MINUS
-import com.craftinginterpreters.klox.TokenType.NIL
-import com.craftinginterpreters.klox.TokenType.NUMBER
-import com.craftinginterpreters.klox.TokenType.OR
-import com.craftinginterpreters.klox.TokenType.PLUS
-import com.craftinginterpreters.klox.TokenType.PRINT
-import com.craftinginterpreters.klox.TokenType.RETURN
-import com.craftinginterpreters.klox.TokenType.RIGHT_BRACE
-import com.craftinginterpreters.klox.TokenType.RIGHT_PAREN
-import com.craftinginterpreters.klox.TokenType.SEMICOLON
-import com.craftinginterpreters.klox.TokenType.SLASH
-import com.craftinginterpreters.klox.TokenType.STAR
-import com.craftinginterpreters.klox.TokenType.STRING
-import com.craftinginterpreters.klox.TokenType.SUPER
-import com.craftinginterpreters.klox.TokenType.THIS
-import com.craftinginterpreters.klox.TokenType.TRUE
-import com.craftinginterpreters.klox.TokenType.VAR
-import com.craftinginterpreters.klox.TokenType.WHILE
-
-
 private val keywords = mapOf(
-    "and" to AND,
-    "class" to CLASS,
-    "else" to ELSE,
-    "false" to FALSE,
-    "for" to FOR,
-    "fun" to FUN,
-    "if" to IF,
-    "nil" to NIL,
-    "or" to OR,
-    "print" to PRINT,
-    "return" to RETURN,
-    "super" to SUPER,
-    "this" to THIS,
-    "true" to TRUE,
-    "var" to VAR,
-    "while" to WHILE
+    "and" to TokenType.AND,
+    "class" to TokenType.CLASS,
+    "else" to TokenType.ELSE,
+    "false" to TokenType.FALSE,
+    "for" to TokenType.FOR,
+    "fun" to TokenType.FUN,
+    "if" to TokenType.IF,
+    "nil" to TokenType.NIL,
+    "or" to TokenType.OR,
+    "print" to TokenType.PRINT,
+    "return" to TokenType.RETURN,
+    "super" to TokenType.SUPER,
+    "this" to TokenType.THIS,
+    "true" to TokenType.TRUE,
+    "var" to TokenType.VAR,
+    "while" to TokenType.WHILE
 )
 
 class Scanner(private val source: String) {
@@ -73,7 +32,7 @@ class Scanner(private val source: String) {
       scanToken()
     }
 
-    tokens += Token(EOF, "", null, line)
+    tokens += Token(TokenType.EOF, "", null, line)
     return tokens
   }
 
@@ -81,25 +40,25 @@ class Scanner(private val source: String) {
     val c = advance()
 
     when (c) {
-      '(' -> addToken(LEFT_PAREN)
-      ')' -> addToken(RIGHT_PAREN)
-      '{' -> addToken(LEFT_BRACE)
-      '}' -> addToken(RIGHT_BRACE)
-      ',' -> addToken(COMMA)
-      '.' -> addToken(DOT)
-      '-' -> addToken(MINUS)
-      '+' -> addToken(PLUS)
-      ';' -> addToken(SEMICOLON)
-      '*' -> addToken(STAR)
-      '!' -> if (match('=')) addToken(BANG_EQUAL) else addToken(BANG)
-      '=' -> if (match('=')) addToken(EQUAL_EQUAL) else addToken(EQUAL)
-      '<' -> if (match('=')) addToken(LESS_EQUAL) else addToken(LESS)
-      '>' -> if (match('=')) addToken(GREATER_EQUAL) else addToken(GREATER)
+      '(' -> addToken(TokenType.LEFT_PAREN)
+      ')' -> addToken(TokenType.RIGHT_PAREN)
+      '{' -> addToken(TokenType.LEFT_BRACE)
+      '}' -> addToken(TokenType.RIGHT_BRACE)
+      ',' -> addToken(TokenType.COMMA)
+      '.' -> addToken(TokenType.DOT)
+      '-' -> addToken(TokenType.MINUS)
+      '+' -> addToken(TokenType.PLUS)
+      ';' -> addToken(TokenType.SEMICOLON)
+      '*' -> addToken(TokenType.STAR)
+      '!' -> if (match('=')) addToken(TokenType.BANG_EQUAL) else addToken(TokenType.BANG)
+      '=' -> if (match('=')) addToken(TokenType.EQUAL_EQUAL) else addToken(TokenType.EQUAL)
+      '<' -> if (match('=')) addToken(TokenType.LESS_EQUAL) else addToken(TokenType.LESS)
+      '>' -> if (match('=')) addToken(TokenType.GREATER_EQUAL) else addToken(TokenType.GREATER)
       '/' -> {
         if (match('/')) {
           while (peek() != '\n' && !isAtEnd()) advance()
         } else {
-          addToken(SLASH)
+          addToken(TokenType.SLASH)
         }
       }
       ' ', '\r', '\t' -> {}
@@ -157,7 +116,7 @@ class Scanner(private val source: String) {
     advance()
 
     val value = source.substring(start + 1, current - 1)
-    addToken(STRING, value)
+    addToken(TokenType.STRING, value)
   }
 
   private fun number() {
@@ -169,14 +128,14 @@ class Scanner(private val source: String) {
       while (isDigit(peek())) advance()
     }
 
-    addToken(NUMBER, (source.substring(start, current).toDouble()))
+    addToken(TokenType.NUMBER, (source.substring(start, current).toDouble()))
   }
 
   private fun identifier() {
     while (isAlphaNumeric(peek())) advance()
 
     val text = source.substring(start, current)
-    val type = keywords[text] ?: IDENTIFIER
+    val type = keywords[text] ?: TokenType.IDENTIFIER
     addToken(type)
   }
 
