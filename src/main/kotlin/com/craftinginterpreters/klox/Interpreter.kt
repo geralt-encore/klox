@@ -30,10 +30,11 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         checkNumberOperands(expr.operator, left, right)
         left as Double >= right as Double
       }
-//      TokenType.LESS -> {
-//        checkNumberOperands(expr.operator, left, right)
-//        left as Double < right as Double
-//      }
+      // TODO kotlin compiler bug?
+      TokenType.LESS -> {
+        checkNumberOperands(expr.operator, left, right)
+        left as Double <= right as Double
+      }
       TokenType.LESS_EQUAL -> {
         checkNumberOperands(expr.operator, left, right)
         left as Double <= right as Double
@@ -89,6 +90,17 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     return value
   }
 
+  override fun visitLogicalExpr(expr: Expr.Logical): Any? {
+    val left = evaluate(expr.left)
+
+    when {
+      expr.operator.type == TokenType.OR -> if (isTruthy(left)) return left
+      expr.operator.type == TokenType.AND -> if (!isTruthy(left)) return left
+    }
+
+    return evaluate(expr.right)
+  }
+
   override fun visitExpressionStmt(stmt: Stmt.Expression) {
     evaluate(stmt.expression)
   }
@@ -109,6 +121,20 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
   override fun visitBlockStmt(stmt: Stmt.Block) {
     executeBlock(stmt.statements, Environment(environment))
+  }
+
+  override fun visitIfStmt(stmt: Stmt.If) {
+    if (isTruthy(evaluate(stmt.condition))) {
+      execute(stmt.thenBranch)
+    } else if (stmt.elseBranch != null) {
+      execute(stmt.elseBranch)
+    }
+  }
+
+  override fun visitWhileStmt(stmt: Stmt.While) {
+    while (isTruthy(evaluate(stmt.condition))) {
+      execute(stmt.body)
+    }
   }
 
   private fun evaluate(expr: Expr) = expr.accept(this)
