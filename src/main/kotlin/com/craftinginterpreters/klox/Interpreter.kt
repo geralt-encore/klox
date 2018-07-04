@@ -1,9 +1,25 @@
 package com.craftinginterpreters.klox
 
+import com.craftinginterpreters.klox.Stmt.Return
+
+
+
 
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
-  private var environment = Environment()
+  val globals = Environment()
+  private var environment = globals
+
+  init {
+    globals.define("clock", object : LoxCallable {
+
+      override fun arity() = 0
+
+      override fun call(interpreter: Interpreter, arguments: List<Any?>): Any {
+        return System.currentTimeMillis().toDouble() / 1000.0
+      }
+    })
+  }
 
   fun interpret(statements: List<Stmt>) {
     try {
@@ -30,10 +46,9 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
         checkNumberOperands(expr.operator, left, right)
         left as Double >= right as Double
       }
-      // TODO kotlin compiler bug?
       TokenType.LESS -> {
         checkNumberOperands(expr.operator, left, right)
-        left as Double <= right as Double
+        (left as Double) < right as Double
       }
       TokenType.LESS_EQUAL -> {
         checkNumberOperands(expr.operator, left, right)
@@ -101,6 +116,24 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     return evaluate(expr.right)
   }
 
+  override fun visitCallExpr(expr: Expr.Call): Any? {
+    val callee = evaluate(expr.callee)
+
+    val arguments = mutableListOf<Any?>()
+    expr.arguments.forEach { arguments += evaluate(it) }
+
+    if (callee !is LoxCallable) {
+      throw RuntimeError(expr.paren, "Can only call functions and classes.")
+    }
+
+    val function: LoxCallable = callee
+    if (arguments.size != function.arity()) {
+      throw RuntimeError(expr.paren, "Expected ${function.arity()} arguments but got ${arguments.size}.")
+    }
+
+    return function.call(this, arguments)
+  }
+
   override fun visitExpressionStmt(stmt: Stmt.Expression) {
     evaluate(stmt.expression)
   }
@@ -137,9 +170,21 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     }
   }
 
+  override fun visitFunctionStmt(stmt: Stmt.Function) {
+    val function = LoxFunction(stmt, environment)
+    environment.define(stmt.name.lexeme, function)
+  }
+
+  override fun visitReturnStmt(stmt: Stmt.Return) {
+    var value: Any? = null
+    if (stmt.value != null) value = evaluate(stmt.value)
+
+    throw Return(value)
+  }
+
   private fun evaluate(expr: Expr) = expr.accept(this)
 
-  private fun executeBlock(statements: List<Stmt>, environment: Environment) {
+  fun executeBlock(statements: List<Stmt>, environment: Environment) {
     val previous = this.environment
     try {
       this.environment = environment

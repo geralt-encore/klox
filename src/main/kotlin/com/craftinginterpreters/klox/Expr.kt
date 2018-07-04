@@ -5,7 +5,7 @@ sealed class Expr {
   interface Visitor<out R> {
     fun visitAssignExpr(expr: Assign): R
     fun visitBinaryExpr(expr: Binary): R
-//    fun visitCallExpr(expr: Call): R
+    fun visitCallExpr(expr: Call): R
 //    fun visitGetExpr(expr: Get): R
     fun visitGroupingExpr(expr: Grouping): R
     fun visitLiteralExpr(expr: Literal): R
@@ -25,9 +25,9 @@ sealed class Expr {
     override fun <R> accept(visitor: Visitor<R>) = visitor.visitBinaryExpr(this)
   }
 
-//  data class Call(val callee: Expr, val paren: Token, val arguments: List<Expr>): Expr() {
-//    override fun <R> accept(visitor: Visitor<R>) = visitor.visit(this)
-//  }
+  data class Call(val callee: Expr, val paren: Token, val arguments: List<Expr>): Expr() {
+    override fun <R> accept(visitor: Visitor<R>) = visitor.visitCallExpr(this)
+  }
 
   data class Grouping(val expression: Expr) : Expr() {
     override fun <R> accept(visitor: Visitor<R>) = visitor.visitGroupingExpr(this)
