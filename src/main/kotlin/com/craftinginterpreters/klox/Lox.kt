@@ -47,7 +47,15 @@ private fun run(source: String) {
   val parser = Parser(tokens)
   val statements = parser.parse()
 
+  // parse error
   if (hadError) return
+
+  val resolver = Resolver(interpreter)
+
+  // resolution error
+  if (hadError) return
+
+  resolver.resolve(statements)
 
   interpreter.interpret(statements)
 }

@@ -1,14 +1,11 @@
 package com.craftinginterpreters.klox
 
-import com.craftinginterpreters.klox.Stmt.Return
-
-
-
 
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
-  val globals = Environment()
+  private val globals = Environment()
   private var environment = globals
+  private val locals = mutableMapOf<Expr, Int>()
 
   init {
     globals.define("clock", object : LoxCallable {
@@ -96,12 +93,18 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     return null
   }
 
-  override fun visitVariableExpr(expr: Expr.Variable) = environment.get(expr.name)
+  override fun visitVariableExpr(expr: Expr.Variable) = lookUpVariable(expr.name, expr)
 
   override fun visitAssignExpr(expr: Expr.Assign): Any? {
     val value = evaluate(expr.value)
 
-    environment.assign(expr.name, value)
+    val distance = locals[expr]
+    if (distance != null) {
+      environment.assignAt(distance, expr.name, value)
+    } else {
+      globals.assign(expr.name, value)
+    }
+
     return value
   }
 
@@ -182,6 +185,10 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     throw Return(value)
   }
 
+  fun resolve(expr: Expr, depth: Int) {
+    locals[expr] = depth
+  }
+
   private fun evaluate(expr: Expr) = expr.accept(this)
 
   fun executeBlock(statements: List<Stmt>, environment: Environment) {
@@ -192,6 +199,14 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     } finally {
       this.environment = previous
     }
+  }
+
+  private fun lookUpVariable(name: Token, expr: Expr): Any? {
+    val distance = locals[expr]
+    if (distance != null){
+      return environment.getAt(distance, name.lexeme)
+    }
+    return globals.get(name)
   }
 
   private fun isTruthy(it: Any?) = when (it) {
