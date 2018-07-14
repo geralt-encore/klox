@@ -17,6 +17,7 @@ class Parser(private val tokens: List<Token>) {
 
   private fun declaration(): Stmt? {
     try {
+      if (match(TokenType.CLASS)) return classDeclaration()
       if (match(TokenType.FUN)) return function("function")
       if (match(TokenType.VAR)) return varDeclaration()
       return statement()
@@ -26,7 +27,21 @@ class Parser(private val tokens: List<Token>) {
     }
   }
 
-  private fun function(kind: String): Stmt {
+  private fun classDeclaration(): Stmt.Class {
+    val name = consume(TokenType.IDENTIFIER, "Expect class name.")
+    consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+
+    val methods = mutableListOf<Stmt.Function>()
+    while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+      methods.add(function("method"))
+    }
+
+    consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+
+    return Stmt.Class(name, methods)
+  }
+
+  private fun function(kind: String): Stmt.Function {
     val name = consume(TokenType.IDENTIFIER, "Expect $kind name.")
 
     consume(TokenType.LEFT_PAREN, "Expect '(' after $kind name.")
@@ -46,7 +61,7 @@ class Parser(private val tokens: List<Token>) {
     return Stmt.Function(name, parameters, body)
   }
 
-  private fun varDeclaration(): Stmt {
+  private fun varDeclaration(): Stmt.Var {
     val name = consume(TokenType.IDENTIFIER, "Expect variable name.")
 
     var initializer: Expr? = null
@@ -169,8 +184,9 @@ class Parser(private val tokens: List<Token>) {
       val value = assignment()
 
       if (expr is Expr.Variable) {
-        val name = expr.name
-        return Expr.Assign(name, value)
+        return Expr.Assign(expr.name, value)
+      } else if (expr is Expr.Get) {
+        return Expr.Set(expr.obj, expr.name, value)
       }
 
       error(equals, "Invalid assignment target.")
@@ -264,11 +280,14 @@ class Parser(private val tokens: List<Token>) {
   private fun call(): Expr {
     var expr = primary()
 
-    while (true) {
-      if (match(TokenType.LEFT_PAREN)) {
-        expr = finishCall(expr)
-      } else {
-        break
+    loop@ while (true) {
+      when {
+        match(TokenType.LEFT_PAREN) -> expr = finishCall(expr)
+        match(TokenType.DOT) -> {
+          val name = consume(TokenType.IDENTIFIER, "Expect property name after '.'.")
+          expr = Expr.Get(expr, name)
+        }
+        else -> break@loop
       }
     }
 
@@ -299,9 +318,9 @@ class Parser(private val tokens: List<Token>) {
       return Expr.Literal(previous().literal)
     }
 
-    if (match(TokenType.IDENTIFIER)) {
-      return Expr.Variable(previous())
-    }
+    if (match(TokenType.THIS)) return Expr.This(previous())
+
+    if (match(TokenType.IDENTIFIER)) return Expr.Variable(previous())
 
     if (match(TokenType.LEFT_PAREN)) {
       val expr = expression()

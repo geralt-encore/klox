@@ -1,5 +1,9 @@
 package com.craftinginterpreters.klox
 
+import java.util.HashMap
+
+
+
 
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
@@ -137,6 +141,24 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     return function.call(this, arguments)
   }
 
+  override fun visitGetExpr(expr: Expr.Get): Any? {
+    val obj = evaluate(expr.obj)
+    if (obj is LoxInstance) {
+      return obj.get(expr.name)
+    }
+
+    throw RuntimeError(expr.name, "Only instances have properties.")
+  }
+
+  override fun visitSetExpr(expr: Expr.Set): Any? {
+    val obj = evaluate(expr.obj) as? LoxInstance ?: throw RuntimeError(expr.name, "Only instances have fields.")
+    val value = evaluate(expr.value)
+    obj.set(expr.name, value)
+    return value
+  }
+
+  override fun visitThisExpr(expr: Expr.This) = lookUpVariable(expr.keyword, expr)
+
   override fun visitExpressionStmt(stmt: Stmt.Expression) {
     evaluate(stmt.expression)
   }
@@ -183,6 +205,19 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
     if (stmt.value != null) value = evaluate(stmt.value)
 
     throw Return(value)
+  }
+
+  override fun visitClassStmt(stmt: Stmt.Class) {
+    environment.define(stmt.name.lexeme, null)
+
+    val methods = mutableMapOf<String, LoxFunction>()
+    stmt.methods.forEach { method ->
+      val function = LoxFunction(method, environment, method.name.lexeme == "init")
+      methods[method.name.lexeme] = function
+    }
+
+    val klass = LoxClass(stmt.name.lexeme, methods)
+    environment.assign(stmt.name, klass)
   }
 
   fun resolve(expr: Expr, depth: Int) {
