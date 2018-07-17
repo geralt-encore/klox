@@ -1,11 +1,16 @@
 package com.craftinginterpreters.klox
 
 class LoxClass(val name: String,
+               private val superclass: LoxClass?,
                private val methods: Map<String, LoxFunction>) : LoxCallable {
 
   fun findMethod(instance: LoxInstance, name: String): LoxFunction? {
     if (methods.containsKey(name)) {
       return methods[name]!!.bind(instance)
+    }
+
+    if (superclass != null) {
+      return superclass.findMethod(instance, name)
     }
 
     return null

@@ -1,9 +1,5 @@
 package com.craftinginterpreters.klox
 
-import java.util.HashMap
-
-
-
 
 class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
@@ -159,6 +155,15 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
   override fun visitThisExpr(expr: Expr.This) = lookUpVariable(expr.keyword, expr)
 
+  override fun visitSuperExpr(expr: Expr.Super): Any? {
+    val distance = locals[expr]!!
+    val superclass = environment.getAt(distance, "super") as LoxClass
+    val obj = environment.getAt(distance - 1, "this") as LoxInstance
+
+    return superclass.findMethod(obj, expr.method.lexeme) ?: throw RuntimeError(expr.method,
+        "Undefined property '" + expr.method.lexeme + "'.")
+  }
+
   override fun visitExpressionStmt(stmt: Stmt.Expression) {
     evaluate(stmt.expression)
   }
@@ -208,7 +213,21 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
   }
 
   override fun visitClassStmt(stmt: Stmt.Class) {
+    var superclass: Any? = null
+    if (stmt.superclass != null) {
+      superclass = evaluate(stmt.superclass)
+      if (superclass !is LoxClass) {
+        throw RuntimeError(stmt.superclass.name,
+            "Superclass must be a class.")
+      }
+    }
+
     environment.define(stmt.name.lexeme, null)
+
+    if (stmt.superclass != null) {
+      environment = Environment(environment)
+      environment.define("super", superclass)
+    }
 
     val methods = mutableMapOf<String, LoxFunction>()
     stmt.methods.forEach { method ->
@@ -216,7 +235,11 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
       methods[method.name.lexeme] = function
     }
 
-    val klass = LoxClass(stmt.name.lexeme, methods)
+    if (superclass != null) {
+      environment = environment.enclosing!!
+    }
+
+    val klass = LoxClass(stmt.name.lexeme, superclass as LoxClass?, methods)
     environment.assign(stmt.name, klass)
   }
 
