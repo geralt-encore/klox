@@ -25,7 +25,7 @@ sealed class Expr {
     override fun <R> accept(visitor: Visitor<R>) = visitor.visitBinaryExpr(this)
   }
 
-  data class Call(val callee: Expr, val paren: Token, val arguments: List<Expr>): Expr() {
+  data class Call(val callee: Expr, val paren: Token, val arguments: List<Expr>) : Expr() {
     override fun <R> accept(visitor: Visitor<R>) = visitor.visitCallExpr(this)
   }
 

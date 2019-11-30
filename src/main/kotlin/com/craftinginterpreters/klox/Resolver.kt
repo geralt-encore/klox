@@ -2,7 +2,6 @@ package com.craftinginterpreters.klox
 
 import java.util.*
 
-
 class Resolver(private val interpreter: Interpreter) : Expr.Visitor<Unit>, Stmt.Visitor<Unit> {
 
   private val scopes: Stack<MutableMap<String, Boolean>> = Stack()

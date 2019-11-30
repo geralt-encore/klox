@@ -37,9 +37,8 @@ class Scanner(private val source: String) {
   }
 
   private fun scanToken() {
-    val c = advance()
 
-    when (c) {
+    when (val c = advance()) {
       '(' -> addToken(TokenType.LEFT_PAREN)
       ')' -> addToken(TokenType.RIGHT_PAREN)
       '{' -> addToken(TokenType.LEFT_BRACE)
@@ -61,7 +60,8 @@ class Scanner(private val source: String) {
           addToken(TokenType.SLASH)
         }
       }
-      ' ', '\r', '\t' -> {}
+      ' ', '\r', '\t' -> {
+      }
       '\n' -> line++
       '"' -> string()
       else -> {

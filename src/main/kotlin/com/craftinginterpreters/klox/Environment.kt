@@ -30,7 +30,7 @@ class Environment(val enclosing: Environment? = null) {
 
     if (enclosing != null) return enclosing.get(name)
 
-    throw RuntimeError( name, "Undefined variable '${name.lexeme}'.")
+    throw RuntimeError(name, "Undefined variable '${name.lexeme}'.")
   }
 
   fun getAt(distance: Int, name: String) = ancestor(distance).values[name]

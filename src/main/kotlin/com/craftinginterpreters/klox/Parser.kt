@@ -1,13 +1,6 @@
 package com.craftinginterpreters.klox
 
 import com.craftinginterpreters.klox.error as loxError
-import java.time.temporal.TemporalAdjusters.previous
-import java.time.temporal.TemporalAdjusters.previous
-
-
-
-
-
 
 class Parser(private val tokens: List<Token>) {
 
@@ -294,11 +287,11 @@ class Parser(private val tokens: List<Token>) {
     var expr = primary()
 
     loop@ while (true) {
-      when {
-        match(TokenType.LEFT_PAREN) -> expr = finishCall(expr)
+      expr = when {
+        match(TokenType.LEFT_PAREN) -> finishCall(expr)
         match(TokenType.DOT) -> {
           val name = consume(TokenType.IDENTIFIER, "Expect property name after '.'.")
-          expr = Expr.Get(expr, name)
+          Expr.Get(expr, name)
         }
         else -> break@loop
       }

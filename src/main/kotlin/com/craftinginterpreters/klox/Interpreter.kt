@@ -111,9 +111,10 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
   override fun visitLogicalExpr(expr: Expr.Logical): Any? {
     val left = evaluate(expr.left)
 
-    when {
-      expr.operator.type == TokenType.OR -> if (isTruthy(left)) return left
-      expr.operator.type == TokenType.AND -> if (!isTruthy(left)) return left
+    @Suppress("NON_EXHAUSTIVE_WHEN")
+    when (expr.operator.type) {
+      TokenType.OR -> if (isTruthy(left)) return left
+      TokenType.AND -> if (!isTruthy(left)) return left
     }
 
     return evaluate(expr.right)
@@ -261,7 +262,7 @@ class Interpreter : Expr.Visitor<Any?>, Stmt.Visitor<Unit> {
 
   private fun lookUpVariable(name: Token, expr: Expr): Any? {
     val distance = locals[expr]
-    if (distance != null){
+    if (distance != null) {
       return environment.getAt(distance, name.lexeme)
     }
     return globals.get(name)

@@ -6,6 +6,7 @@ import java.io.InputStreamReader
 import java.nio.charset.Charset
 import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.system.exitProcess
 
 val interpreter = Interpreter()
 var hadError = false
@@ -14,7 +15,7 @@ var hadRuntimeError = false
 @Throws(IOException::class)
 fun main(args: Array<String>) {
   when {
-    args.size > 1 -> System.out.println("Usage: klox [script]")
+    args.size > 1 -> println("Usage: klox [script]")
     args.size == 1 -> runFile(args[0])
     else -> runPrompt()
   }
@@ -25,8 +26,8 @@ private fun runFile(path: String) {
   val bytes = Files.readAllBytes(Paths.get(path))
   run(String(bytes, Charset.defaultCharset()))
 
-  if (hadError) System.exit(65)
-  if (hadRuntimeError) System.exit(70)
+  if (hadError) exitProcess(65)
+  if (hadRuntimeError) exitProcess(70)
 }
 
 @Throws(IOException::class)
@@ -35,7 +36,7 @@ private fun runPrompt() {
   val reader = BufferedReader(input)
 
   while (true) {
-    System.out.print("> ")
+    print("> ")
     run(reader.readLine())
     hadError = false
   }
@@ -65,8 +66,8 @@ fun error(line: Int, message: String) {
 }
 
 fun error(token: Token, message: String) {
-  when {
-    token.type == TokenType.EOF -> report(token.line, " at end", message)
+  when (token.type) {
+    TokenType.EOF -> report(token.line, " at end", message)
     else -> report(token.line, " at '" + token.lexeme + "'", message)
   }
 }

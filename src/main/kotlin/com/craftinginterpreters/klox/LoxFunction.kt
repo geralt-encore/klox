@@ -7,7 +7,7 @@ class LoxFunction(private val declaration: Stmt.Function,
 
   override fun call(interpreter: Interpreter, arguments: List<Any?>): Any? {
     val environment = Environment(closure)
-    for (i in 0 until declaration.parameters.size) {
+    for (i in declaration.parameters.indices) {
       environment.define(declaration.parameters[i].lexeme, arguments[i])
     }
 
