@@ -6,7 +6,7 @@ class LoxClass(val name: String,
 
   fun findMethod(instance: LoxInstance, name: String): LoxFunction? {
     if (methods.containsKey(name)) {
-      return methods[name]!!.bind(instance)
+      return methods.getValue(name).bind(instance)
     }
 
     if (superclass != null) {
